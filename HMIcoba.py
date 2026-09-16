@@ -5,15 +5,15 @@ import pydicom
 import matplotlib.pyplot as plt
 
 # ---------------------------------------------------------
-# 1. KONFIGURASI HALAMAN & LAYOUT
+# 1. KONFIGURASI HALAMAN & LAYOUT (HMI Standard)
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="MediScan AI Assist - Medical Workstation",
+    page_title="MediScan AI Assist - Workstation",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
+# Custom CSS untuk antarmuka medis
 st.markdown("""
     <style>
     .main { background-color: #0e1117; }
@@ -39,16 +39,16 @@ def load_medical_image(uploaded_file):
         
     return img
 
-def apply_image_enhancement(img, clip_limit, tile_grid, filter_type, kernel_size):
-    """Proses Enhancement & Filtering"""
+def apply_image_enhancement(img, clip_limit, tile_grid, filter_type, kernel_size, sharpen_type, sharpen_strength):
+    """Proses Enhancement, Noise Reduction, dan Penajaman (Sharpening)"""
     processed = img.copy()
 
-    # 1. CLAHE
+    # 1. Contrast Enhancement (CLAHE)
     if clip_limit > 0:
         clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=(tile_grid, tile_grid))
         processed = clahe.apply(processed)
 
-    # 2. Filtering
+    # 2. Filtering / Noise Reduction (Low-pass Filter)
     if filter_type == "Median Filter":
         k = kernel_size if kernel_size % 2 != 0 else kernel_size + 1
         processed = cv2.medianBlur(processed, k)
@@ -56,15 +56,27 @@ def apply_image_enhancement(img, clip_limit, tile_grid, filter_type, kernel_size
         k = kernel_size if kernel_size % 2 != 0 else kernel_size + 1
         processed = cv2.GaussianBlur(processed, (k, k), 0)
 
+    # 3. Image Sharpening (Penajaman Tepi & Struktur Anatomi)
+    if sharpen_type == "Unsharp Masking":
+        # Unsharp Masking: Original + (Original - Blurred) * Strength
+        blurred = cv2.GaussianBlur(processed, (5, 5), 1.0)
+        processed = cv2.addWeighted(processed, 1.0 + sharpen_strength, blurred, -sharpen_strength, 0)
+    elif sharpen_type == "Laplacian Kernel":
+        # Matrix Kernel Sharpening 3x3
+        kernel = np.array([[0, -1, 0],
+                           [-1, 4 + sharpen_strength, -1],
+                           [0, -1, 0]])
+        processed = cv2.filter2D(processed, -1, kernel)
+
     return processed
 
 def plot_histogram(orig, proc):
-    """Histogram Intensitas Piksel"""
+    """Histogram Distribusi Intensitas Piksel"""
     fig, ax = plt.subplots(figsize=(8, 2.2), facecolor='#0e1117')
     ax.set_facecolor('#0e1117')
     
     ax.hist(orig.ravel(), bins=256, range=[0, 256], color='gray', alpha=0.5, label='Original')
-    ax.hist(proc.ravel(), bins=256, range=[0, 256], color='#00d2ff', alpha=0.6, label='Enhanced')
+    ax.hist(proc.ravel(), bins=256, range=[0, 256], color='#00d2ff', alpha=0.6, label='Sharpened/Enhanced')
     
     ax.tick_params(colors='white')
     ax.legend(facecolor='#1e2227', edgecolor='none', labelcolor='white')
@@ -83,16 +95,19 @@ uploaded_file = st.sidebar.file_uploader(
     type=["png", "jpg", "jpeg", "dcm"]
 )
 
-# Pemilihan Modul Pemeriksaan (Agar teks diagnosis sesuai dengan gambar yang diunggah)
 st.sidebar.markdown("### 📋 Modul Pemeriksaan Medis")
 modul_pemeriksaan = st.sidebar.selectbox(
     "Jenis Citra Medis:",
-    ["X-Ray Musculoskeletal (Tulang/Tangan)", "X-Ray Thorax (Dada/Paru)", "MRI / CT-Scan Otak", "USG / General Image"]
+    ["MRI / CT-Scan Sendi & Tulang", "X-Ray Musculoskeletal", "X-Ray Thorax (Dada)", "MRI Otak", "USG / General Image"]
 )
 
+st.sidebar.markdown("### 🔪 Penajaman Detail (Sharpening)")
+sharpen_type = st.sidebar.selectbox("Pilih Teknik Penajaman", ["Unsharp Masking", "Laplacian Kernel", "None"])
+sharpen_strength = st.sidebar.slider("Intensitas Penajaman", 0.1, 3.0, 1.2, step=0.1)
+
 st.sidebar.markdown("### 🎛️ Contrast Enhancement (CLAHE)")
-clip_limit = st.sidebar.slider("CLAHE Clip Limit", 0.0, 5.0, 2.0, step=0.5)
-tile_grid = st.sidebar.slider("CLAHE Tile Grid Size", 2, 16, 8, step=2)
+clip_limit = st.sidebar.slider("CLAHE Clip Limit", 0.0, 5.0, 2.5, step=0.5)
+tile_grid = st.sidebar.slider("CLAHE Tile Grid Size", 2, 16, 6, step=2)
 
 st.sidebar.markdown("### 🧹 Filtering (Noise Reduction)")
 filter_type = st.sidebar.selectbox("Pilih Jenis Filter", ["None", "Median Filter", "Gaussian Filter"])
@@ -114,11 +129,13 @@ st.title("🏥 Medical Image Diagnostic Dashboard")
 st.caption(f"Aplikasi Analisis Interaktif Citra Medis - **Modul: {modul_pemeriksaan}**")
 
 if uploaded_file is not None:
-    # Membaca & Memproses Gambar
+    # Read & Process Image
     original_img = load_medical_image(uploaded_file)
-    processed_img = apply_image_enhancement(original_img, clip_limit, tile_grid, filter_type, kernel_size)
+    processed_img = apply_image_enhancement(
+        original_img, clip_limit, tile_grid, filter_type, kernel_size, sharpen_type, sharpen_strength
+    )
 
-    # --- TAMPILAN PERBANDINGAN HASIL FILTER ---
+    # --- TAMPILAN PERBANDINGAN HASIL ENHANCEMENT & SHARPENING ---
     st.markdown("### 🔍 Perbandingan Hasil Pengolahan Citra")
     col1, col2, col3 = st.columns(3)
 
@@ -127,31 +144,40 @@ if uploaded_file is not None:
         st.image(original_img, use_container_width=True, channels="GRAY", caption="Input Original")
 
     with col2:
-        st.subheader("2. Hasil Enhancement")
-        st.image(processed_img, use_container_width=True, channels="GRAY", caption=f"CLAHE={clip_limit}, Filter={filter_type}")
+        st.subheader("2. Hasil Penajaman")
+        st.image(
+            processed_img, 
+            use_container_width=True, 
+            channels="GRAY", 
+            caption=f"Sharpen={sharpen_type} ({sharpen_strength}x) | CLAHE={clip_limit}"
+        )
 
     with col3:
         st.subheader("3. Peta Perubahan (Diff)")
         diff_img = cv2.absdiff(original_img, processed_img)
         diff_color = cv2.applyColorMap(diff_img, cv2.COLORMAP_HOT)
-        st.image(cv2.cvtColor(diff_color, cv2.COLOR_BGR2RGB), use_container_width=True, caption="Area piksel terpengaruh filter")
+        st.image(
+            cv2.cvtColor(diff_color, cv2.COLOR_BGR2RGB), 
+            use_container_width=True, 
+            caption="Detail penajaman piksel/tepi yang ditambahkan"
+        )
 
     # Histogram
     st.pyplot(plot_histogram(original_img, processed_img))
 
     st.markdown("---")
 
-    # --- PANEL SEGMENTASI & ANALISIS SESUAI GAMBAR ---
+    # --- PANEL SEGMENTASI & ANALISIS ---
     st.subheader("📊 Hasil Segmentasi & Feature Extraction")
     col_det1, col_det2 = st.columns([2, 1])
 
-    # PROSES SEGMENTASI BERDASARKAN PILIHAN USER
+    # Overlay Segmentasi
     overlay_img = cv2.cvtColor(processed_img, cv2.COLOR_GRAY2BGR)
     
     if mode_segmentasi == "Canny Edge Detection (Deteksi Kontur Tulang/Organ)":
         edges = cv2.Canny(processed_img, 50, 150)
-        overlay_img[edges > 0] = [0, 255, 0] # Garis hijau untuk batas kontur
-        deskripsi_seg = "Garis hijau menunjukkan batas tepi (edges) struktur anatomi / tulang."
+        overlay_img[edges > 0] = [0, 255, 0] # Garis hijau
+        deskripsi_seg = "Garis hijau menunjukkan batas tepi (edges) struktur anatomi/tulang."
         
     elif mode_segmentasi == "Thresholding ROI (Area Terang/Kepadatan Tinggi)":
         _, thresh = cv2.threshold(processed_img, 180, 255, cv2.THRESH_BINARY)
@@ -159,7 +185,7 @@ if uploaded_file is not None:
         for cnt in contours:
             if cv2.contourArea(cnt) > 100:
                 cv2.drawContours(overlay_img, [cnt], -1, (0, 0, 255), 2)
-        deskripsi_seg = "Garis merah menandai area struktur dengan densitas/kepadatan tinggi."
+        deskripsi_seg = "Garis merah menandai area struktur berdensitas/kepadatan tinggi."
         
     else: # Heatmap
         color_mask = cv2.applyColorMap(processed_img, cv2.COLORMAP_JET)
@@ -179,12 +205,11 @@ if uploaded_file is not None:
             </div>
         """, unsafe_allow_html=True)
         
-        # Informasi Dinamis Sesuai Modul
         st.markdown("**Detail Citra Teridentifikasi:**")
         st.write(f"- **Modul Aktif:** {modul_pemeriksaan}")
         st.write(f"- **Nama File:** {uploaded_file.name}")
         st.write(f"- **Resolusi Citra:** {original_img.shape[1]} x {original_img.shape[0]} px")
-        st.write(f"- **Rata-rata Intensitas Piksel:** {round(np.mean(processed_img), 2)}")
+        st.write(f"- **Rata-rata Intensitas:** {round(np.mean(processed_img), 2)}")
         
         st.markdown("---")
         
@@ -204,8 +229,8 @@ else:
     st.info("👈 Silakan unggah citra medis (.png, .jpg, atau .dcm) pada panel kontrol di sebelah kiri untuk memulai pemrosesan.")
     st.markdown("""
     ### Alur Kerja Interaksi Pengguna (HMI):
-    1. **Upload Input:** Masukkan file citra radiologi (X-Ray Tulang / Paru / MRI / USG).
-    2. **Pilih Modul & Segmentasi:** Sesuaikan jenis pemeriksaan dan mode deteksi di sidebar.
-    3. **Enhancement Control:** Atur *CLAHE* & *Noise Filter* sesuai kenyamanan visual radiolog.
+    1. **Upload Input:** Masukkan file citra radiologi (MRI Lutut / X-Ray / CT-Scan / USG).
+    2. **Atur Sharpening:** Geser slider *Intensitas Penajaman* untuk mempertegas garis tepi jaringan.
+    3. **Pilih Modul & Segmentasi:** Sesuaikan jenis pemeriksaan dan mode deteksi di sidebar.
     4. **Clinical Decision:** Dokter/Radiolog mencatat hasil observasi klinis dan menyimpan laporan.
     """)
