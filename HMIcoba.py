@@ -6,14 +6,16 @@ from PIL import Image
 
 # ---------------------------------------------------------
 # 1. KONFIGURASI HALAMAN & LAYOUT (HMI Standard)
+# PERBAIKAN: Menggunakan layout="wide" (bukan page_layout)
+# Harus diletakkan di paling atas sebelum panggilan st.* lainnya
 # ---------------------------------------------------------
 st.set_page_config(
     page_title="MediScan AI Assist - CAD Workstation",
-    page_layout="wide",
+    layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS untuk gaya antarmuka profesional medis
+# Custom CSS untuk tampilan antarmuka medis modern
 st.markdown("""
     <style>
     .main { background-color: #0e1117; }
@@ -29,16 +31,16 @@ st.markdown("""
 # ---------------------------------------------------------
 def load_medical_image(uploaded_file):
     """Membaca file citra standar (.png/.jpg) atau DICOM (.dcm)"""
-    file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=uint8)
+    file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
     
-    if uploaded_file.name.endswith('.dcm'):
-        # Penanganan khusus format DICOM
+    if uploaded_file.name.lower().endswith('.dcm'):
+        # Membaca file format DICOM
         dicom_data = pydicom.dcmread(uploaded_file)
         img = dicom_data.pixel_array
-        # Normalisasi ke skala 0-255 (8-bit)
+        # Normalisasi skala abu-abu ke 8-bit (0-255)
         img = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
     else:
-        # Format citra umum
+        # Membaca format citra biasa
         img = cv2.imdecode(file_bytes, cv2.IMREAD_GRAYSCALE)
         
     return img
@@ -54,7 +56,7 @@ def apply_image_enhancement(img, clip_limit, tile_grid, filter_type, kernel_size
 
     # 2. Filtering / Noise Reduction
     if filter_type == "Median Filter":
-        # Kernel size harus ganjil
+        # Kernel size harus berupa bilangan ganjil
         k = kernel_size if kernel_size % 2 != 0 else kernel_size + 1
         processed = cv2.medianBlur(processed, k)
     elif filter_type == "Gaussian Filter":
@@ -64,7 +66,7 @@ def apply_image_enhancement(img, clip_limit, tile_grid, filter_type, kernel_size
     return processed
 
 # ---------------------------------------------------------
-# 3. SIDEBAR: KONTROL INTERAKTIF & PARAMETER (HMI Control Panel)
+# 3. SIDEBAR: KONTROL INTERAKTIF (HMI Control Panel)
 # ---------------------------------------------------------
 st.sidebar.title("🩺 MediScan Workstation")
 st.sidebar.markdown("---")
@@ -92,11 +94,11 @@ st.title("🏥 Medical Image Diagnostic Dashboard")
 st.caption("Aplikasi Analisis Interaktif Citra Medis (X-Ray, CT-Scan, USG, MRI)")
 
 if uploaded_file is not None:
-    # Read Image
+    # Membaca citra dan menerapkan enhancement
     original_img = load_medical_image(uploaded_file)
     processed_img = apply_image_enhancement(original_img, clip_limit, tile_grid, filter_type, kernel_size)
 
-    # --- TAMPILAN SIDE-BY-SIDE (HMI Visual Comparison) ---
+    # --- TAMPILAN SIDE-BY-SIDE (Visual Comparison) ---
     col1, col2 = st.columns(2)
 
     with col1:
@@ -115,22 +117,23 @@ if uploaded_file is not None:
     col_det1, col_det2 = st.columns([2, 1])
 
     with col_det1:
-        # Simulasi Pemrosesan Segmentasi / Deteksi Lesi
         st.markdown("**Segmentasi Area Terindikasi Kelainan (Heatmap Overlay)**")
         
-        # Simulasi pembuatan mask kelainan sederhana (Thresholding)
-        _, mask = cv2.threshold(processed_img, 180, 255, cv2.THRESH_BINARY)
+        # Visualisasi Heatmap ROI (Region of Interest)
         color_mask = cv2.applyColorMap(processed_img, cv2.COLORMAP_JET)
+        heatmap_overlay = cv2.addWeighted(
+            cv2.cvtColor(processed_img, cv2.COLOR_GRAY2BGR), 0.7, 
+            color_mask, 0.3, 0
+        )
         
-        # Overlay Heatmap ke gambar asli
-        heatmap_overlay = cv2.addWeighted(cv2.cvtColor(processed_img, cv2.COLOR_GRAY2BGR), 0.7, color_mask, 0.3, 0)
-        
-        st.image(heatmap_overlay, caption="Visualisasi Segmentasi / ROI (Region of Interest)", use_container_width=True)
+        # Konversi warna BGR OpenCV ke RGB untuk tampilan Streamlit
+        heatmap_rgb = cv2.cvtColor(heatmap_overlay, cv2.COLOR_BGR2RGB)
+        st.image(heatmap_rgb, caption="Visualisasi Segmentasi / ROI (Region of Interest)", use_container_width=True)
 
     with col_det2:
         st.markdown("**Status Analisis Sistem**")
         
-        # Tampilan Statis Contoh Indikasi
+        # Contoh Kartu Diagnostik
         st.markdown("""
             <div class="status-box status-alert">
                 ⚠️ Indikasi Kelainan Terdeteksi
@@ -146,7 +149,7 @@ if uploaded_file is not None:
         
         st.markdown("---")
         
-        # Fitur HMI: Validasi & Konfirmasi Oleh Tenaga Medis
+        # Fitur HMI: Validasi Dokter (Human-in-the-Loop)
         st.markdown("**📋 Validasi Dokter (Human-in-the-Loop)**")
         validation = st.radio(
             "Apakah Anda menyetujui analisis sistem?",
@@ -159,10 +162,9 @@ if uploaded_file is not None:
             st.success(f"Laporan berhasil disimpan! Status: {validation}")
 
 else:
-    # Halaman Selamat Datang / Upload Prompt
+    # Tampilan awal jika belum ada file yang diunggah
     st.info("👈 Silakan unggah citra medis (.png, .jpg, atau .dcm) pada panel kontrol di sebelah kiri untuk memulai pemrosesan.")
     
-    # Placeholder Ilustrasi Workflow HMI
     st.markdown("""
     ### Alur Kerja Interaksi Pengguna (HMI):
     1. **Upload Input:** Masukkan file citra radiologi (X-Ray / CT / USG).
