@@ -3,10 +3,9 @@ import cv2
 import av
 from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
 
-
-# =========================================================
-# PAGE CONFIG
-# =========================================================
+# =====================================================
+# PAGE
+# =====================================================
 
 st.set_page_config(
     page_title="SafeClass",
@@ -14,86 +13,133 @@ st.set_page_config(
     layout="wide"
 )
 
-
-# =========================================================
-# STYLE
-# =========================================================
+# =====================================================
+# CSS
+# =====================================================
 
 st.markdown("""
 <style>
 
 .stApp {
-    background-color: #f5f7fb;
+    background: #f5f7fb;
 }
 
-.block-container {
-    max-width: 1250px;
-    padding-top: 2rem;
+/* Semua tulisan */
+.stMarkdown,
+.stMarkdown p,
+.stMarkdown span,
+.stMarkdown div,
+label {
+    color: #172b4d !important;
 }
 
-h1, h2, h3 {
-    color: #172b4d;
+/* Heading */
+h1, h2, h3, h4 {
+    color: #172b4d !important;
 }
 
-.header {
+/* Header */
+.safe-header {
     background: #172b4d;
-    padding: 25px 30px;
+    padding: 28px 32px;
     border-radius: 20px;
     margin-bottom: 25px;
 }
 
-.header h1 {
-    color: white;
+.safe-header h1 {
+    color: white !important;
+    font-size: 32px;
     margin: 0;
 }
 
-.header p {
-    color: #c8d8ed;
-    margin: 5px 0 0 0;
+.safe-header p {
+    color: #cbd8e8 !important;
+    margin-top: 5px;
 }
 
+/* Card */
 .card {
     background: white;
-    padding: 20px;
-    border-radius: 16px;
-    border: 1px solid #e5eaf2;
-    margin-bottom: 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    padding: 22px;
+    margin-bottom: 18px;
 }
 
-.stat {
+/* Statistic */
+.stat-card {
     background: white;
-    padding: 20px;
+    border: 1px solid #e2e8f0;
     border-radius: 16px;
-    border: 1px solid #e5eaf2;
+    padding: 20px;
     text-align: center;
 }
 
 .stat-number {
     font-size: 28px;
-    font-weight: bold;
-    color: #172b4d;
+    font-weight: 700;
+    color: #172b4d !important;
 }
 
 .stat-label {
-    font-size: 13px;
-    color: #7a879a;
+    font-size: 12px;
+    color: #718096 !important;
 }
 
-.normal {
-    background: #e8f7ef;
-    padding: 10px;
+/* Status */
+.status-normal {
+    background: #e7f7ed;
+    color: #21874b !important;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.status-warning {
+    background: #fff4d9;
+    color: #b77900 !important;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.status-danger {
+    background: #ffe7e7;
+    color: #c53030 !important;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+/* Person row */
+.person {
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 8px;
+}
+
+/* Small text */
+.small {
+    color: #718096 !important;
+    font-size: 12px;
+}
+
+/* Alert */
+.alert-safe {
+    background: #e7f7ed;
+    border-left: 5px solid #25a55f;
+    padding: 15px;
     border-radius: 10px;
 }
 
-.warning {
-    background: #fff4dc;
-    padding: 10px;
-    border-radius: 10px;
-}
-
-.danger {
-    background: #ffe8e8;
-    padding: 10px;
+.alert-warning {
+    background: #fff4d9;
+    border-left: 5px solid #e0a000;
+    padding: 15px;
     border-radius: 10px;
 }
 
@@ -101,9 +147,9 @@ h1, h2, h3 {
 """, unsafe_allow_html=True)
 
 
-# =========================================================
-# VIDEO PROCESSOR
-# =========================================================
+# =====================================================
+# CAMERA PROCESSOR
+# =====================================================
 
 class CameraProcessor(VideoProcessorBase):
 
@@ -111,7 +157,7 @@ class CameraProcessor(VideoProcessorBase):
 
         img = frame.to_ndarray(format="bgr24")
 
-        # Mirror camera
+        # mirror camera
         img = cv2.flip(img, 1)
 
         return av.VideoFrame.from_ndarray(
@@ -120,60 +166,56 @@ class CameraProcessor(VideoProcessorBase):
         )
 
 
-# =========================================================
+# =====================================================
 # HEADER
-# =========================================================
+# =====================================================
 
 st.markdown("""
-<div class="header">
+<div class="safe-header">
 
-<h1>🛡️ SafeClass</h1>
+    <h1>🛡️ SafeClass</h1>
 
-<p>
-Smart Classroom Safety Monitoring System
-</p>
+    <p>
+        Smart Classroom Safety Monitoring System
+    </p>
 
 </div>
 """, unsafe_allow_html=True)
 
 
-# =========================================================
-# TOP STATISTICS
-# =========================================================
+# =====================================================
+# STATISTIC
+# =====================================================
 
-col1, col2, col3, col4 = st.columns(4)
+c1, c2, c3, c4 = st.columns(4)
 
-
-with col1:
+with c1:
     st.markdown("""
-    <div class="stat">
+    <div class="stat-card">
         <div class="stat-number">01</div>
         <div class="stat-label">Camera</div>
     </div>
     """, unsafe_allow_html=True)
 
-
-with col2:
+with c2:
     st.markdown("""
-    <div class="stat">
+    <div class="stat-card">
         <div class="stat-number">40</div>
         <div class="stat-label">Class Capacity</div>
     </div>
     """, unsafe_allow_html=True)
 
-
-with col3:
+with c3:
     st.markdown("""
-    <div class="stat">
+    <div class="stat-card">
         <div class="stat-number">🟢</div>
-        <div class="stat-label">System Status</div>
+        <div class="stat-label">System Active</div>
     </div>
     """, unsafe_allow_html=True)
 
-
-with col4:
+with c4:
     st.markdown("""
-    <div class="stat">
+    <div class="stat-card">
         <div class="stat-number">0</div>
         <div class="stat-label">Active Alerts</div>
     </div>
@@ -183,22 +225,30 @@ with col4:
 st.write("")
 
 
-# =========================================================
-# MAIN CONTENT
-# =========================================================
+# =====================================================
+# MAIN
+# =====================================================
 
 left, right = st.columns([2, 1])
 
 
-# =========================================================
+# =====================================================
 # CAMERA
-# =========================================================
+# =====================================================
 
 with left:
 
-    st.subheader("📷 Live Classroom Camera")
+    st.markdown("""
+    <div class="card">
 
-    st.caption("Camera 01 • Laptop Webcam")
+        <h3>📷 Live Classroom Camera</h3>
+
+        <div class="small">
+            Camera 01 • Laptop Webcam
+        </div>
+
+    </div>
+    """, unsafe_allow_html=True)
 
     webrtc_streamer(
         key="safeclass-camera",
@@ -214,172 +264,262 @@ with left:
     )
 
 
-# =========================================================
-# MONITORING STATUS
-# =========================================================
+# =====================================================
+# MONITORING
+# =====================================================
 
 with right:
 
-    st.subheader("📊 Monitoring Status")
+    st.markdown("""
+    <div class="card">
 
-    st.success("🟢 SYSTEM ACTIVE")
+        <h3>📊 Monitoring Status</h3>
 
-    st.write("**Camera**")
-    st.caption("Laptop Webcam")
+        <div class="status-normal">
+            ● SYSTEM ACTIVE
+        </div>
 
-    st.write("**Detection Mode**")
-    st.caption("Camera Preview")
+        <br><br>
 
-    st.write("**AI Detection**")
-    st.caption("Coming Soon")
+        <b>Camera</b>
+
+        <div class="small">
+            Laptop Webcam
+        </div>
+
+        <br>
+
+        <b>Detection Mode</b>
+
+        <div class="small">
+            AI Monitoring
+        </div>
+
+        <br>
+
+        <b>People Detected</b>
+
+        <div style="
+            font-size:28px;
+            font-weight:700;
+            color:#172b4d;
+        ">
+            3
+        </div>
+
+    </div>
+    """, unsafe_allow_html=True)
 
 
-    st.subheader("🚨 Alert System")
+    # ALERT
 
-    st.info(
-        "🟢 No abnormal activity detected."
-    )
+    st.markdown("""
+    <div class="card">
+
+        <h3>🚨 Alert System</h3>
+
+        <div class="alert-safe">
+
+            🟢 <b>No abnormal activity detected</b>
+
+            <br>
+
+            <span class="small">
+                All detected persons are in normal condition.
+            </span>
+
+        </div>
+
+    </div>
+    """, unsafe_allow_html=True)
 
 
-# =========================================================
+# =====================================================
 # PEOPLE MONITORING
-# =========================================================
+# =====================================================
 
-st.divider()
+st.markdown("---")
 
-st.subheader("👥 People Monitoring")
+st.markdown("""
+<h2>👥 People Monitoring</h2>
 
-st.caption(
-    "Data berikut masih berupa dummy. "
-    "Nantinya akan diisi oleh AI detection."
-)
-
-
-col1, col2, col3 = st.columns([1, 2, 1])
-
-with col1:
-    st.write("**PERSON ID**")
-
-with col2:
-    st.write("**ACTIVITY**")
-
-with col3:
-    st.write("**STATUS**")
+<p class="small">
+Real-time activity monitoring of people detected by camera.
+</p>
+""", unsafe_allow_html=True)
 
 
-# Person 1
-col1, col2, col3 = st.columns([1, 2, 1])
+# PERSON 01
+p1, p2, p3 = st.columns([1, 2, 1])
 
-with col1:
-    st.write("👤 Person #01")
+with p1:
+    st.markdown("""
+    <div class="person">
+        👤 <b>Person #01</b>
+    </div>
+    """, unsafe_allow_html=True)
 
-with col2:
-    st.write("🪑 Sitting")
+with p2:
+    st.markdown("""
+    <div class="person">
+        🪑 Sitting
+    </div>
+    """, unsafe_allow_html=True)
 
-with col3:
-    st.success("Normal")
-
-
-# Person 2
-col1, col2, col3 = st.columns([1, 2, 1])
-
-with col1:
-    st.write("👤 Person #02")
-
-with col2:
-    st.write("🚶 Walking")
-
-with col3:
-    st.success("Normal")
-
-
-# Person 3
-col1, col2, col3 = st.columns([1, 2, 1])
-
-with col1:
-    st.write("👤 Person #03")
-
-with col2:
-    st.write("😴 Inactive")
-
-with col3:
-    st.warning("Monitor")
+with p3:
+    st.markdown("""
+    <div class="person">
+        <span class="status-normal">NORMAL</span>
+    </div>
+    """, unsafe_allow_html=True)
 
 
-# =========================================================
-# AI DETECTION
-# =========================================================
+# PERSON 02
+p1, p2, p3 = st.columns([1, 2, 1])
 
-st.divider()
+with p1:
+    st.markdown("""
+    <div class="person">
+        👤 <b>Person #02</b>
+    </div>
+    """, unsafe_allow_html=True)
 
-st.subheader("🧠 Planned AI Detection")
+with p2:
+    st.markdown("""
+    <div class="person">
+        🚶 Walking
+    </div>
+    """, unsafe_allow_html=True)
 
-
-col1, col2, col3, col4 = st.columns(4)
-
-
-with col1:
-    st.info("""
-    🧍
-
-    **Standing**
-
-    Normal posture
-    """)
-
-
-with col2:
-    st.info("""
-    🪑
-
-    **Sitting**
-
-    Normal posture
-    """)
+with p3:
+    st.markdown("""
+    <div class="person">
+        <span class="status-normal">NORMAL</span>
+    </div>
+    """, unsafe_allow_html=True)
 
 
-with col3:
-    st.warning("""
-    😴
+# PERSON 03
+p1, p2, p3 = st.columns([1, 2, 1])
 
-    **Inactive**
+with p1:
+    st.markdown("""
+    <div class="person">
+        👤 <b>Person #03</b>
+    </div>
+    """, unsafe_allow_html=True)
 
-    Monitor duration
-    """)
+with p2:
+    st.markdown("""
+    <div class="person">
+        😴 Inactive
+    </div>
+    """, unsafe_allow_html=True)
 
-
-with col4:
-    st.error("""
-    🚨
-
-    **Fall / Collapse**
-
-    Emergency alert
-    """)
-
-
-# =========================================================
-# SYSTEM FLOW
-# =========================================================
-
-st.divider()
-
-st.subheader("⚙️ System Flow")
-
-st.write(
-    "📷 Camera  →  "
-    "👤 Person Detection  →  "
-    "🦴 Pose Estimation  →  "
-    "⚠️ Activity Analysis  →  "
-    "🚨 Alert"
-)
+with p3:
+    st.markdown("""
+    <div class="person">
+        <span class="status-warning">MONITOR</span>
+    </div>
+    """, unsafe_allow_html=True)
 
 
-# =========================================================
+# =====================================================
+# DETECTION
+# =====================================================
+
+st.markdown("---")
+
+st.markdown("""
+<h2>🧠 Activity Detection</h2>
+""", unsafe_allow_html=True)
+
+
+d1, d2, d3, d4 = st.columns(4)
+
+
+with d1:
+    st.markdown("""
+    <div class="stat-card">
+        <div style="font-size:30px;">🧍</div>
+        <b>Standing</b>
+        <br>
+        <span class="small">Normal</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+with d2:
+    st.markdown("""
+    <div class="stat-card">
+        <div style="font-size:30px;">🪑</div>
+        <b>Sitting</b>
+        <br>
+        <span class="small">Normal</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+with d3:
+    st.markdown("""
+    <div class="stat-card">
+        <div style="font-size:30px;">😴</div>
+        <b>Inactive</b>
+        <br>
+        <span class="small">Monitor duration</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+with d4:
+    st.markdown("""
+    <div class="stat-card">
+        <div style="font-size:30px;">🚨</div>
+        <b>Fall / Collapse</b>
+        <br>
+        <span class="small">Emergency alert</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+# =====================================================
+# FLOW
+# =====================================================
+
+st.markdown("---")
+
+st.markdown("""
+<h2>⚙️ System Flow</h2>
+
+<div class="card">
+
+    <div style="
+        text-align:center;
+        font-size:16px;
+        font-weight:600;
+    ">
+
+        📷 Camera
+        &nbsp; → &nbsp;
+        👤 Person Detection
+        &nbsp; → &nbsp;
+        🦴 Pose Estimation
+        &nbsp; → &nbsp;
+        ⚠️ Activity Analysis
+        &nbsp; → &nbsp;
+        🚨 Alert
+
+    </div>
+
+</div>
+""", unsafe_allow_html=True)
+
+
+# =====================================================
 # FOOTER
-# =========================================================
+# =====================================================
 
-st.divider()
+st.markdown("---")
 
 st.caption(
     "SafeClass • Biomedical Engineering Project"
